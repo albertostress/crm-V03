@@ -1,0 +1,24 @@
+# COMANDO PARA FAZER PUSH MANUALMENTE
+
+Execute este comando no terminal Git Bash ou WSL:
+
+cd /mnt/d/Projecto/kwame-crm-02/espocrm
+
+git push https://albertostress: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@github.com/albertostress/crm-V03.git master --force
+
+Ou se preferir, em etapas:
+
+1. Configure o remote:
+git remote set-url origin https://albertostress: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@github.com/albertostress/crm-V03.git
+
+2. Faça o push:
+git push origin master --force
+
+NOTA: O projeto tem 94MB, pode demorar alguns minutos dependendo da sua conexão.
+
+Arquivos já commitados e prontos para push:
+- Docker Compose configurado
+- Dockerfile otimizado  
+- Documentação completa
+- GitHub Actions CI/CD
+- Todas as configurações para Dokploy
