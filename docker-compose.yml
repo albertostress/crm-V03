@@ -1,0 +1,127 @@
+version: '3.8'
+
+services:
+  # Database Service (MariaDB)
+  mariadb:
+    image: mariadb:10.11
+    container_name: espocrm-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MARIADB_DATABASE: ${DB_NAME:-espocrm}
+      MARIADB_USER: ${DB_USER:-espocrm}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-espocrm_password}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - espocrm-network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      timeout: 10s
+      retries: 5
+      interval: 10s
+      start_period: 30s
+
+  # EspoCRM Application
+  espocrm:
+    image: espocrm/espocrm:latest
+    container_name: espocrm-app
+    restart: unless-stopped
+    environment:
+      # Database Configuration
+      ESPOCRM_DATABASE_PLATFORM: Mysql
+      ESPOCRM_DATABASE_HOST: mariadb
+      ESPOCRM_DATABASE_PORT: 3306
+      ESPOCRM_DATABASE_NAME: ${DB_NAME:-espocrm}
+      ESPOCRM_DATABASE_USER: ${DB_USER:-espocrm}
+      ESPOCRM_DATABASE_PASSWORD: ${DB_PASSWORD:-espocrm_password}
+      
+      # Admin Configuration
+      ESPOCRM_ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ESPOCRM_ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      
+      # Site Configuration
+      ESPOCRM_SITE_URL: ${SITE_URL:-http://localhost}
+      
+      # Additional Configuration
+      ESPOCRM_DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE:-en_US}
+      ESPOCRM_DEFAULT_TIMEZONE: ${DEFAULT_TIMEZONE:-UTC}
+      
+    volumes:
+      - espocrm_data:/var/www/html
+      - ./custom:/var/www/html/custom
+      - ./data/upload:/var/www/html/data/upload
+      - ./data/logs:/var/www/html/data/logs
+    ports:
+      - "${ESPOCRM_PORT:-8080}:80"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - espocrm-network
+
+  # EspoCRM Daemon (for scheduled jobs)
+  espocrm-daemon:
+    image: espocrm/espocrm:latest
+    container_name: espocrm-daemon
+    restart: unless-stopped
+    volumes:
+      - espocrm_data:/var/www/html
+      - ./custom:/var/www/html/custom
+      - ./data/upload:/var/www/html/data/upload
+      - ./data/logs:/var/www/html/data/logs
+    environment:
+      # Database Configuration
+      ESPOCRM_DATABASE_PLATFORM: Mysql
+      ESPOCRM_DATABASE_HOST: mariadb
+      ESPOCRM_DATABASE_PORT: 3306
+      ESPOCRM_DATABASE_NAME: ${DB_NAME:-espocrm}
+      ESPOCRM_DATABASE_USER: ${DB_USER:-espocrm}
+      ESPOCRM_DATABASE_PASSWORD: ${DB_PASSWORD:-espocrm_password}
+    entrypoint: docker-daemon.sh
+    depends_on:
+      espocrm:
+        condition: service_started
+    networks:
+      - espocrm-network
+
+  # EspoCRM WebSocket (optional - for real-time features)
+  espocrm-websocket:
+    image: espocrm/espocrm:latest
+    container_name: espocrm-websocket
+    restart: unless-stopped
+    environment:
+      # Database Configuration
+      ESPOCRM_DATABASE_PLATFORM: Mysql
+      ESPOCRM_DATABASE_HOST: mariadb
+      ESPOCRM_DATABASE_PORT: 3306
+      ESPOCRM_DATABASE_NAME: ${DB_NAME:-espocrm}
+      ESPOCRM_DATABASE_USER: ${DB_USER:-espocrm}
+      ESPOCRM_DATABASE_PASSWORD: ${DB_PASSWORD:-espocrm_password}
+      
+      # WebSocket Configuration
+      ESPOCRM_CONFIG_USE_WEB_SOCKET: "true"
+      ESPOCRM_CONFIG_WEB_SOCKET_URL: ${WEBSOCKET_URL:-ws://localhost:8081}
+      ESPOCRM_CONFIG_WEB_SOCKET_ZERO_M_Q_SUBSCRIBER_DSN: ${WEBSOCKET_SUBSCRIBER_DSN:-tcp://espocrm-websocket:7777}
+      ESPOCRM_CONFIG_WEB_SOCKET_ZERO_M_Q_SUBMISSION_DSN: ${WEBSOCKET_SUBMISSION_DSN:-tcp://espocrm-websocket:7778}
+    volumes:
+      - espocrm_data:/var/www/html
+      - ./custom:/var/www/html/custom
+    ports:
+      - "${WEBSOCKET_PORT:-8081}:8080"
+    entrypoint: docker-websocket.sh
+    depends_on:
+      espocrm:
+        condition: service_started
+    networks:
+      - espocrm-network
+
+volumes:
+  mariadb_data:
+    driver: local
+  espocrm_data:
+    driver: local
+
+networks:
+  espocrm-network:
+    driver: bridge

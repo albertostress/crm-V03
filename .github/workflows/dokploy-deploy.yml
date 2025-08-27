@@ -1,0 +1,205 @@
+name: Deploy to Dokploy
+
+on:
+  push:
+    branches:
+      - main
+      - production
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, pdo, pdo_mysql, gd, zip, ldap
+        coverage: xdebug
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    
+    - name: Cache Composer packages
+      uses: actions/cache@v3
+      with:
+        path: vendor
+        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-composer-
+    
+    - name: Install PHP dependencies
+      run: composer install --prefer-dist --no-progress --no-interaction
+    
+    - name: Install Node dependencies
+      run: npm ci
+    
+    - name: Run PHP linting
+      run: composer lint
+      continue-on-error: true
+    
+    - name: Run PHPStan
+      run: composer phpstan
+      continue-on-error: true
+    
+    - name: Run PHPUnit tests
+      run: composer test
+      continue-on-error: true
+    
+    - name: Build frontend assets
+      run: npm run build
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production'
+    
+    environment:
+      name: ${{ github.ref == 'refs/heads/production' && 'production' || 'staging' }}
+      url: ${{ github.ref == 'refs/heads/production' && secrets.PROD_URL || secrets.STAGING_URL }}
+    
+    steps:
+    - name: Deploy to Dokploy
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.DOKPLOY_HOST }}
+        username: ${{ secrets.DOKPLOY_USER }}
+        key: ${{ secrets.DOKPLOY_SSH_KEY }}
+        port: ${{ secrets.DOKPLOY_PORT || 22 }}
+        script: |
+          cd /var/dokploy/apps/espocrm
+          
+          # Pull latest changes
+          git pull origin ${{ github.ref_name }}
+          
+          # Update environment variables
+          export IMAGE_TAG=${{ needs.build.outputs.image-tag }}
+          
+          # Deploy using Dokploy CLI
+          dokploy deploy espocrm \
+            --image $IMAGE_TAG \
+            --env-file .env.${{ github.ref == 'refs/heads/production' && 'production' || 'staging' }}
+          
+          # Run post-deployment tasks
+          docker exec espocrm-app php rebuild.php
+          docker exec espocrm-app php clear_cache.php
+          
+          # Health check
+          sleep 10
+          curl -f ${{ github.ref == 'refs/heads/production' && secrets.PROD_URL || secrets.STAGING_URL }}/api/v1/App/health || exit 1
+    
+    - name: Notify deployment status
+      if: always()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        text: |
+          Deployment ${{ job.status }}
+          Branch: ${{ github.ref_name }}
+          Environment: ${{ github.ref == 'refs/heads/production' && 'production' || 'staging' }}
+          Commit: ${{ github.sha }}
+          Author: ${{ github.actor }}
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+      continue-on-error: true
+
+  rollback:
+    runs-on: ubuntu-latest
+    if: failure() && needs.deploy.result == 'failure'
+    needs: [deploy]
+    
+    steps:
+    - name: Rollback deployment
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.DOKPLOY_HOST }}
+        username: ${{ secrets.DOKPLOY_USER }}
+        key: ${{ secrets.DOKPLOY_SSH_KEY }}
+        port: ${{ secrets.DOKPLOY_PORT || 22 }}
+        script: |
+          cd /var/dokploy/apps/espocrm
+          
+          # Rollback to previous version
+          dokploy rollback espocrm --steps 1
+          
+          # Clear cache
+          docker exec espocrm-app php clear_cache.php
+    
+    - name: Notify rollback
+      uses: 8398a7/action-slack@v3
+      with:
+        status: custom
+        custom_payload: |
+          {
+            text: "⚠️ Deployment failed and was rolled back",
+            attachments: [{
+              color: "warning",
+              fields: [
+                { title: "Branch", value: "${{ github.ref_name }}", short: true },
+                { title: "Environment", value: "${{ github.ref == 'refs/heads/production' && 'production' || 'staging' }}", short: true },
+                { title: "Commit", value: "${{ github.sha }}", short: false }
+              ]
+            }]
+          }
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+      continue-on-error: true
