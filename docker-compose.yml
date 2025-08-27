@@ -60,7 +60,7 @@ services:
       - ./data/upload:/var/www/html/data/upload
       - ./data/logs:/var/www/html/data/logs
     ports:
-      - "${ESPOCRM_PORT:-80}:80"
+      - "${ESPOCRM_PORT:-8585}:80"
     depends_on:
       mariadb:
         condition: service_healthy
