@@ -4,7 +4,7 @@ services:
   # Database Service (MariaDB)
   mariadb:
     image: mariadb:10.11
-    container_name: espocrm-db
+    container_name: espocrm-v03-db
     restart: unless-stopped
     environment:
       MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
@@ -29,7 +29,7 @@ services:
       context: .
       dockerfile: Dockerfile
     image: espocrm-custom:latest
-    container_name: espocrm-app
+    container_name: espocrm-v03-app
     restart: unless-stopped
     environment:
       # Database Configuration
@@ -68,7 +68,7 @@ services:
   espocrm-daemon:
     # Usar mesma imagem customizada do app principal
     image: espocrm-custom:latest
-    container_name: espocrm-daemon
+    container_name: espocrm-v03-daemon
     restart: unless-stopped
     volumes:
       - espocrm_data:/var/www/html
@@ -94,7 +94,7 @@ services:
   espocrm-websocket:
     # Usar mesma imagem customizada do app principal
     image: espocrm-custom:latest
-    container_name: espocrm-websocket
+    container_name: espocrm-v03-websocket
     restart: unless-stopped
     environment:
       # Database Configuration
