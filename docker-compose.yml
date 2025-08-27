@@ -88,10 +88,8 @@ services:
       ESPOCRM_DATABASE_NAME: ${DB_NAME:-espocrm}
       ESPOCRM_DATABASE_USER: ${DB_USER:-espocrm}
       ESPOCRM_DATABASE_PASSWORD: ${DB_PASSWORD:-espocrm_password}
-    # Usar o mesmo entrypoint do container principal
-    entrypoint: docker-entrypoint.sh
-    # Para daemon, adicionar comando para rodar cron
-    command: ["sh", "-c", "cron && apache2-foreground"]
+    # Comando direto para o daemon - só cron, sem Apache
+    command: ["sh", "-c", "sleep 30 && cron -f"]
     depends_on:
       espocrm:
         condition: service_started
