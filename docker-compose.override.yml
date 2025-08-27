@@ -1,0 +1,20 @@
+# docker-compose.override.yml
+# Este arquivo sobrescreve configurações do docker-compose.yml para desenvolvimento local
+# Não é commitado no git por padrão
+
+version: '3.8'
+
+services:
+  espocrm:
+    # Para desenvolvimento, montar código local diretamente
+    volumes:
+      - ./application:/var/www/html/application
+      - ./client:/var/www/html/client
+      - ./custom:/var/www/html/custom
+      - ./data:/var/www/html/data
+      - ./vendor:/var/www/html/vendor
+    environment:
+      # Modo desenvolvimento
+      ESPOCRM_IS_DEV_MODE: "true"
+      PHP_DISPLAY_ERRORS: "On"
+      PHP_ERROR_REPORTING: "E_ALL"

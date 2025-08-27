@@ -1,0 +1,63 @@
+# .dockerignore - Arquivos a ignorar durante o build Docker
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentação
+*.md
+documentacao/
+docs/
+
+# Desenvolvimento
+.vscode/
+.idea/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Node modules (será instalado no build)
+node_modules/
+
+# Cache e temporários (serão criados em runtime)
+data/cache/*
+data/logs/*
+data/upload/.thumbs/*
+data/tmp/*
+
+# Backups
+*.sql
+*.tar.gz
+*.zip
+backup/
+
+# Docker files (não copiar para dentro do container)
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Ambiente
+.env
+.env.*
+
+# Scripts de desenvolvimento
+dev.sh
+build-and-deploy.sh
+git-push.sh
+push_command.txt
+PUSH_MANUAL.txt
+
+# Testes
+tests/
+phpunit.xml
+
+# Outros
+.claude/
+.mcp.json
+.playwright-mcp/

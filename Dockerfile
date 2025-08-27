@@ -79,12 +79,18 @@ RUN { \
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy application files
+# Copy ALL application files including customizations
 COPY --chown=www-data:www-data . .
 
-# Copy built frontend assets from build stage
-COPY --from=frontend-builder --chown=www-data:www-data /app/client/lib ./client/lib
-COPY --from=frontend-builder --chown=www-data:www-data /app/client/css ./client/css
+# Ensure custom directories are preserved
+COPY --chown=www-data:www-data ./custom /var/www/html/custom
+COPY --chown=www-data:www-data ./client/custom /var/www/html/client/custom
+COPY --chown=www-data:www-data ./application/Espo/Modules /var/www/html/application/Espo/Modules
+
+# Copy built frontend assets from build stage (only if they exist)
+# This is optional since we're copying everything above
+# COPY --from=frontend-builder --chown=www-data:www-data /app/client/lib ./client/lib
+# COPY --from=frontend-builder --chown=www-data:www-data /app/client/css ./client/css
 
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction

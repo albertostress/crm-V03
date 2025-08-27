@@ -174,3 +174,29 @@ All custom code should be placed in the `custom/` directory:
 - `fix` - upcoming maintenance release
 - `master` - development branch for new features
 - `stable` - last stable release
+
+## Deployment with Dokploy
+
+### Important Notes for Dokploy
+- **Dokploy does NOT execute custom scripts** - it only reads `docker-compose.yml`
+- The deployment is fully automated based on Docker Compose configuration
+- No need for complex deployment scripts or automation tools
+- Dokploy handles: Git pull, Docker build, Container management, SSL certificates
+
+### Required Files for Dokploy
+- `docker-compose.yml` - Main configuration (uses `build: .` for local build)
+- `Dockerfile` - Build instructions (preserves `/custom` folder)
+- `.env` - Environment variables (configured in Dokploy panel)
+
+### How It Works
+1. Dokploy pulls code from GitHub
+2. Reads `docker-compose.yml`
+3. Builds image locally using `Dockerfile` (preserves customizations)
+4. Starts all containers
+5. Configures SSL automatically
+
+### Why Local Build is Important
+- Using `image: espocrm/espocrm:latest` would override customizations
+- Using `build: .` forces local build with all custom code
+- Custom modules in `/custom` are preserved
+- No dependency on official image updates

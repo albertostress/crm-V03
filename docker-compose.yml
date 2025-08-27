@@ -24,7 +24,11 @@ services:
 
   # EspoCRM Application
   espocrm:
-    image: espocrm/espocrm:latest
+    # Usar build local para preservar customizações
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: espocrm-custom:latest
     container_name: espocrm-app
     restart: unless-stopped
     environment:
@@ -62,7 +66,8 @@ services:
 
   # EspoCRM Daemon (for scheduled jobs)
   espocrm-daemon:
-    image: espocrm/espocrm:latest
+    # Usar mesma imagem customizada do app principal
+    image: espocrm-custom:latest
     container_name: espocrm-daemon
     restart: unless-stopped
     volumes:
@@ -87,7 +92,8 @@ services:
 
   # EspoCRM WebSocket (optional - for real-time features)
   espocrm-websocket:
-    image: espocrm/espocrm:latest
+    # Usar mesma imagem customizada do app principal
+    image: espocrm-custom:latest
     container_name: espocrm-websocket
     restart: unless-stopped
     environment:
