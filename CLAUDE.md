@@ -200,3 +200,31 @@ All custom code should be placed in the `custom/` directory:
 - Using `build: .` forces local build with all custom code
 - Custom modules in `/custom` are preserved
 - No dependency on official image updates
+
+## Traefik Integration for Dokploy (Updated: 2025-01-27)
+
+### Configuration Changes
+- **Removed port exposure**: No `ports: - "80:80"` as Traefik handles routing
+- **Network configuration**: Using `dokploy-network` (external) instead of internal network
+- **Container access**: Via Traefik reverse proxy at https://crm.kwameoilandgas.ao/
+- **No Traefik labels needed**: Dokploy handles Traefik configuration automatically
+
+### Docker Compose Structure
+```yaml
+services:
+  espocrm:
+    build: .
+    container_name: espocrm-v03-app
+    # NO ports exposed
+    networks:
+      - dokploy-network
+      
+networks:
+  dokploy-network:
+    external: true
+```
+
+### Last Update
+- **Date**: 2025-01-27
+- **Change**: Configured for Traefik integration with Dokploy
+- **Result**: Container runs only on internal network, accessible via HTTPS domain

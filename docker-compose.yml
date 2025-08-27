@@ -12,7 +12,7 @@ services:
     volumes:
       - mariadb_data:/var/lib/mysql
     networks:
-      - espocrm-network
+      - dokploy-network
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       timeout: 10s
@@ -29,9 +29,6 @@ services:
     image: espocrm-custom:latest
     container_name: espocrm-v03-app
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.services.espocrm.loadbalancer.server.port=80"
     environment:
       # Database Configuration
       ESPOCRM_DATABASE_PLATFORM: Mysql
@@ -62,15 +59,13 @@ services:
       - ./custom:/var/www/html/custom
       - ./data/upload:/var/www/html/data/upload
       - ./data/logs:/var/www/html/data/logs
-    ports:
-      - "80:80"
     depends_on:
       mariadb:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks:
-      - espocrm-network
+      - dokploy-network
 
   # EspoCRM Daemon (for scheduled jobs)
   espocrm-daemon:
@@ -97,7 +92,7 @@ services:
       espocrm:
         condition: service_started
     networks:
-      - espocrm-network
+      - dokploy-network
 
   # Redis Service (for cache and sessions)
   redis:
@@ -108,7 +103,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - espocrm-network
+      - dokploy-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -153,5 +148,5 @@ volumes:
     driver: local
 
 networks:
-  espocrm-network:
-    driver: bridge
+  dokploy-network:
+    external: true
