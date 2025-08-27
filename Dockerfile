@@ -95,8 +95,8 @@ VOLUME ["/var/www/html/data", "/var/www/html/custom", "/var/www/html/client/cust
 # Configure Apache
 RUN { \
     echo '<VirtualHost *:80>'; \
-    echo '    DocumentRoot /var/www/html/public'; \
-    echo '    <Directory /var/www/html/public>'; \
+    echo '    DocumentRoot /var/www/html'; \
+    echo '    <Directory /var/www/html>'; \
     echo '        Options Indexes FollowSymLinks'; \
     echo '        AllowOverride All'; \
     echo '        Require all granted'; \
