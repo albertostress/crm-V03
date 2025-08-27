@@ -95,8 +95,8 @@ VOLUME ["/var/www/html/data", "/var/www/html/custom", "/var/www/html/client/cust
 # Configure Apache
 RUN { \
     echo '<VirtualHost *:80>'; \
-    echo '    DocumentRoot /var/www/html'; \
-    echo '    <Directory /var/www/html>'; \
+    echo '    DocumentRoot /var/www/html/public'; \
+    echo '    <Directory /var/www/html/public>'; \
     echo '        Options Indexes FollowSymLinks'; \
     echo '        AllowOverride All'; \
     echo '        Require all granted'; \
@@ -107,8 +107,8 @@ RUN { \
     } > /etc/apache2/sites-available/000-default.conf
 
 # Add healthcheck
-HEALTHCHECK --interval=30s --timeout=3s --start-period=30s \
-    CMD curl -f http://localhost/api/v1/App/health || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s \
+    CMD curl -f http://localhost/ || exit 1
 
 # Expose port
 EXPOSE 80
