@@ -1,19 +1,4 @@
-# Multi-stage Dockerfile for EspoCRM with custom configurations
-
-# Stage 1: Build stage for frontend assets
-FROM node:20-alpine AS frontend-builder
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-COPY Gruntfile.js ./
-
-# Install dependencies and build frontend
-RUN npm ci --omit=dev
-RUN npm run build
-
-# Stage 2: Production image
+# Dockerfile para EspoCRM com customizações preservadas
 FROM php:8.2-apache
 
 # Install required PHP extensions and dependencies
@@ -49,8 +34,8 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Composer não é necessário em produção já que vendor/ está no repositório
+# COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Enable Apache modules
 RUN a2enmod rewrite expires headers
@@ -87,13 +72,15 @@ COPY --chown=www-data:www-data ./custom /var/www/html/custom
 COPY --chown=www-data:www-data ./client/custom /var/www/html/client/custom
 COPY --chown=www-data:www-data ./application/Espo/Modules /var/www/html/application/Espo/Modules
 
-# Copy built frontend assets from build stage (only if they exist)
-# This is optional since we're copying everything above
-# COPY --from=frontend-builder --chown=www-data:www-data /app/client/lib ./client/lib
-# COPY --from=frontend-builder --chown=www-data:www-data /app/client/css ./client/css
+# Criar diretórios necessários
+RUN mkdir -p \
+    /var/www/html/data/cache \
+    /var/www/html/data/logs \
+    /var/www/html/data/upload \
+    /var/www/html/custom \
+    /var/www/html/client/custom
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# NÃO executar composer install - os arquivos vendor já estão no repositório
 
 # Set proper permissions
 RUN chown -R www-data:www-data /var/www/html \
