@@ -100,9 +100,14 @@ RUN { \
     echo 'ServerName crm.kwameoilandgas.ao'; \
     echo '<VirtualHost *:80>'; \
     echo '    ServerName crm.kwameoilandgas.ao'; \
-    echo '    DocumentRoot /var/www/html'; \
+    echo '    DocumentRoot /var/www/html/public'; \
+    echo '    <Directory /var/www/html/public>'; \
+    echo '        Options -Indexes +FollowSymLinks'; \
+    echo '        AllowOverride All'; \
+    echo '        Require all granted'; \
+    echo '    </Directory>'; \
     echo '    <Directory /var/www/html>'; \
-    echo '        Options Indexes FollowSymLinks'; \
+    echo '        Options -Indexes'; \
     echo '        AllowOverride All'; \
     echo '        Require all granted'; \
     echo '    </Directory>'; \
