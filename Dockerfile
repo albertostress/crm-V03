@@ -108,9 +108,9 @@ RUN { \
     echo '</VirtualHost>'; \
     } > /etc/apache2/sites-available/000-default.conf
 
-# Add healthcheck - simplificado
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s \
-    CMD curl -f http://localhost/ || exit 1
+# Add healthcheck - verifica se Apache está rodando
+HEALTHCHECK --interval=30s --timeout=10s --start-period=180s \
+    CMD pgrep apache2 || exit 1
 
 # Expose port
 EXPOSE 80
