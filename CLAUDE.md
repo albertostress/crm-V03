@@ -239,6 +239,10 @@ SITE_URL=https://crm.kwameoilandgas.ao
 ```
 
 ### Last Updates
+- **2025-01-28**: Auto-update siteUrl from SITE_URL environment variable
+  - Added SITE_URL variable to docker-compose.yml
+  - Modified docker-entrypoint.sh to automatically update data/config.php
+  - Now siteUrl is always aligned with the value defined in .env
 - **2025-01-27 v2**: Reverted to official EspoCRM image with volume mounts
 - **2025-01-27 v1**: Initial Traefik configuration with custom build
 - **Result**: Simplified deployment using official image while preserving customizations

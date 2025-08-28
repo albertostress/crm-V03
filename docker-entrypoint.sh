@@ -152,6 +152,29 @@ fi
 # Start cron service
 service cron start
 
+# Update siteUrl in config.php if SITE_URL is set
+if [ -n "$SITE_URL" ] && [ -f /var/www/html/data/config.php ]; then
+    echo "Updating siteUrl to ${SITE_URL}..."
+    
+    # Check if siteUrl exists in config
+    if grep -q "'siteUrl'" /var/www/html/data/config.php; then
+        # Update existing siteUrl
+        sed -i "s|'siteUrl' => '.*'|'siteUrl' => '${SITE_URL}'|" /var/www/html/data/config.php
+    else
+        # Add siteUrl if it doesn't exist
+        sed -i "/return array (/a \ \ 'siteUrl' => '${SITE_URL}'," /var/www/html/data/config.php
+    fi
+    
+    echo "✔ siteUrl updated to ${SITE_URL} in data/config.php"
+    
+    # Clear cache after updating config
+    cd /var/www/html && php clear_cache.php > /dev/null 2>&1 || true
+fi
+
+# Ensure proper permissions after any config changes
+chown -R www-data:www-data /var/www/html/data
+chmod -R 775 /var/www/html/data
+
 echo "Starting Apache..."
 
 # Execute the CMD
