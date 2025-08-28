@@ -34,50 +34,75 @@ initialize_espocrm() {
     # Wait for database
     wait_for_db
     
-    # Always create/update config file for direct login
-    echo "Creating configuration for direct login..."
-    
-    # Create config.php from environment variables
-    php -r "
-        \$config = [
-            'database' => [
-                'driver' => getenv('ESPOCRM_DATABASE_PLATFORM') ?: 'pdo_mysql',
-                'host' => getenv('ESPOCRM_DATABASE_HOST') ?: 'espocrm-db',
-                'port' => getenv('ESPOCRM_DATABASE_PORT') ?: '3306',
-                'charset' => 'utf8mb4',
-                'dbname' => getenv('ESPOCRM_DATABASE_NAME') ?: 'espocrm',
-                'user' => getenv('ESPOCRM_DATABASE_USER') ?: 'espocrm',
-                'password' => getenv('ESPOCRM_DATABASE_PASSWORD') ?: 'espocrm_password',
-            ],
-            'useCache' => true,
-            'recordsPerPage' => 20,
-            'recordsPerPageSmall' => 5,
-            'applicationName' => 'EspoCRM',
-            'version' => '8.5.2',
-            'timeZone' => getenv('ESPOCRM_DEFAULT_TIMEZONE') ?: 'UTC',
-            'dateFormat' => 'DD.MM.YYYY',
-            'timeFormat' => 'HH:mm',
-            'weekStart' => 1,
-            'thousandSeparator' => ',',
-            'decimalMark' => '.',
-            'exportDelimiter' => ',',
-            'currencyList' => ['USD'],
-            'defaultCurrency' => 'USD',
-            'baseCurrency' => 'USD',
-            'currencyRates' => [],
-            'language' => getenv('ESPOCRM_DEFAULT_LANGUAGE') ?: 'en_US',
-            'languageList' => ['en_US'],
-            'siteUrl' => getenv('ESPOCRM_SITE_URL') ?: getenv('SITE_URL') ?: 'http://localhost',
-            'isDeveloperMode' => false,
-            'isInstalled' => true,
-            'passwordSalt' => md5(uniqid()),
-            'cryptKey' => md5(uniqid() . 'crypto'),
-        ];
+    # Check if config.php exists, if not copy the pre-configured one
+    if [ ! -f /var/www/html/data/config.php ]; then
+        echo "Creating config.php from template..."
         
-        file_put_contents('/var/www/html/data/config.php', '<?php return ' . var_export(\$config, true) . ';');
-    "
-    
-    echo "Configuration created."
+        # Check if template exists
+        if [ -f /var/www/html/data/config-installed.php ]; then
+            cp /var/www/html/data/config-installed.php /var/www/html/data/config.php
+            echo "Config copied from template."
+        else
+            echo "Creating new config.php..."
+            cat > /var/www/html/data/config.php << 'EOF'
+<?php
+return array (
+  'database' => 
+  array (
+    'driver' => 'pdo_mysql',
+    'host' => 'espocrm-db',
+    'port' => '3306',
+    'charset' => 'utf8mb4',
+    'dbname' => 'espocrm',
+    'user' => 'espocrm',
+    'password' => 'espocrm_password',
+  ),
+  'useCache' => true,
+  'recordsPerPage' => 20,
+  'recordsPerPageSmall' => 5,
+  'applicationName' => 'EspoCRM',
+  'version' => '8.5.2',
+  'timeZone' => 'UTC',
+  'dateFormat' => 'DD.MM.YYYY',
+  'timeFormat' => 'HH:mm',
+  'weekStart' => 1,
+  'thousandSeparator' => ',',
+  'decimalMark' => '.',
+  'exportDelimiter' => ',',
+  'currencyList' => 
+  array (
+    0 => 'USD',
+  ),
+  'defaultCurrency' => 'USD',
+  'baseCurrency' => 'USD',
+  'currencyRates' => 
+  array (
+  ),
+  'language' => 'en_US',
+  'languageList' => 
+  array (
+    0 => 'en_US',
+  ),
+  'siteUrl' => 'https://crm.kwameoilandgas.ao',
+  'isDeveloperMode' => false,
+  'isInstalled' => true,
+  'passwordSalt' => '7f8a9b6c5d4e3f2g1h',
+  'cryptKey' => 'a1b2c3d4e5f6g7h8i9j0',
+  'hashSecretKey' => 'z9y8x7w6v5u4t3s2r1q0',
+  'defaultPermissions' => 
+  array (
+    'user' => 33,
+    'group' => 33,
+  ),
+  'actualDatabaseType' => 'mariadb',
+  'actualDatabaseVersion' => '10.11.0',
+);
+EOF
+            echo "Config created."
+        fi
+    else
+        echo "Config.php already exists."
+    fi
     
     # Run database rebuild
     echo "Rebuilding database..."

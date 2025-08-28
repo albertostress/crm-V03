@@ -80,6 +80,9 @@ RUN mkdir -p \
     /var/www/html/custom \
     /var/www/html/client/custom
 
+# Copy pre-configured config
+COPY --chown=www-data:www-data ./data/config-installed.php /var/www/html/data/config-installed.php
+
 # NÃO executar composer install - os arquivos vendor já estão no repositório
 
 # Set proper permissions
