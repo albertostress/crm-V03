@@ -175,56 +175,70 @@ All custom code should be placed in the `custom/` directory:
 - `master` - development branch for new features
 - `stable` - last stable release
 
-## Deployment with Dokploy
+## Deployment with Dokploy (Revised: 2025-01-27)
 
 ### Important Notes for Dokploy
 - **Dokploy does NOT execute custom scripts** - it only reads `docker-compose.yml`
 - The deployment is fully automated based on Docker Compose configuration
 - No need for complex deployment scripts or automation tools
-- Dokploy handles: Git pull, Docker build, Container management, SSL certificates
+- Dokploy handles: Git pull, Container management, SSL certificates, Traefik routing
 
-### Required Files for Dokploy
-- `docker-compose.yml` - Main configuration (uses `build: .` for local build)
-- `Dockerfile` - Build instructions (preserves `/custom` folder)
-- `.env` - Environment variables (configured in Dokploy panel)
+### Configuration Strategy
+- **Using official image**: `espocrm/espocrm:latest` for stability and updates
+- **Custom code preserved**: Through volume mounts (`./custom` and `./client/custom`)
+- **No local build needed**: Simpler deployment, faster updates
+- **Volumes preserve customizations**: All custom modules and code survive container updates
 
-### How It Works
-1. Dokploy pulls code from GitHub
-2. Reads `docker-compose.yml`
-3. Builds image locally using `Dockerfile` (preserves customizations)
-4. Starts all containers
-5. Configures SSL automatically
-
-### Why Local Build is Important
-- Using `image: espocrm/espocrm:latest` would override customizations
-- Using `build: .` forces local build with all custom code
-- Custom modules in `/custom` are preserved
-- No dependency on official image updates
-
-## Traefik Integration for Dokploy (Updated: 2025-01-27)
-
-### Configuration Changes
-- **Removed port exposure**: No `ports: - "80:80"` as Traefik handles routing
-- **Network configuration**: Using `dokploy-network` (external) instead of internal network
-- **Container access**: Via Traefik reverse proxy at https://crm.kwameoilandgas.ao/
-- **No Traefik labels needed**: Dokploy handles Traefik configuration automatically
-
-### Docker Compose Structure
+### Docker Compose Structure (Current)
 ```yaml
 services:
-  espocrm:
-    build: .
+  espocrm-v03-app:
+    image: espocrm/espocrm:latest
     container_name: espocrm-v03-app
-    # NO ports exposed
+    # NO ports exposed - Traefik handles routing
+    environment:
+      - ESPOCRM_DATABASE_HOST=espocrm-v03-db
+      - ESPOCRM_REDIS_HOST=espocrm-v03-redis
+    volumes:
+      - ./custom:/var/www/html/custom
+      - ./client/custom:/var/www/html/client/custom
     networks:
       - dokploy-network
-      
+
+  espocrm-v03-daemon:
+    image: espocrm/espocrm:latest
+    entrypoint: docker-daemon.sh
+    # Same volumes as main app
+    
+  espocrm-v03-db:
+    image: mariadb:10.11
+    
+  espocrm-v03-redis:
+    image: redis:7-alpine
+
 networks:
   dokploy-network:
     external: true
 ```
 
-### Last Update
-- **Date**: 2025-01-27
-- **Change**: Configured for Traefik integration with Dokploy
-- **Result**: Container runs only on internal network, accessible via HTTPS domain
+### Key Configuration Points
+- **No port exposure**: Traefik manages ports 80/443
+- **External network**: `dokploy-network` for Traefik integration
+- **Volume mounts**: Preserve custom code across updates
+- **Environment variables**: Configured via `.env` file or Dokploy panel
+
+### Required Environment Variables
+```env
+DB_NAME=espocrm
+DB_USER=espocrm
+DB_PASSWORD=<secure_password>
+DB_ROOT_PASSWORD=<secure_root_password>
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=<secure_admin_password>
+SITE_URL=https://crm.kwameoilandgas.ao
+```
+
+### Last Updates
+- **2025-01-27 v2**: Reverted to official EspoCRM image with volume mounts
+- **2025-01-27 v1**: Initial Traefik configuration with custom build
+- **Result**: Simplified deployment using official image while preserving customizations

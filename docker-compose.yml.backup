@@ -1,0 +1,152 @@
+services:
+  # Database Service (MariaDB)
+  mariadb:
+    image: mariadb:10.11
+    container_name: espocrm-v03-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MARIADB_DATABASE: ${DB_NAME:-espocrm}
+      MARIADB_USER: ${DB_USER:-espocrm}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-espocrm_password}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - dokploy-network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      timeout: 10s
+      retries: 5
+      interval: 10s
+      start_period: 30s
+
+  # EspoCRM Application
+  espocrm:
+    # Usar build local para preservar customizações
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: espocrm-custom:latest
+    container_name: espocrm-v03-app
+    restart: unless-stopped
+    environment:
+      # Database Configuration
+      ESPOCRM_DATABASE_PLATFORM: Mysql
+      ESPOCRM_DATABASE_HOST: mariadb
+      ESPOCRM_DATABASE_PORT: 3306
+      ESPOCRM_DATABASE_NAME: ${DB_NAME:-espocrm}
+      ESPOCRM_DATABASE_USER: ${DB_USER:-espocrm}
+      ESPOCRM_DATABASE_PASSWORD: ${DB_PASSWORD:-espocrm_password}
+      
+      # Admin Configuration
+      ESPOCRM_ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ESPOCRM_ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      
+      # Site Configuration
+      ESPOCRM_SITE_URL: ${SITE_URL:-http://localhost}
+      
+      # Additional Configuration
+      ESPOCRM_DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE:-en_US}
+      ESPOCRM_DEFAULT_TIMEZONE: ${DEFAULT_TIMEZONE:-UTC}
+      
+      # Redis Configuration
+      ESPOCRM_CONFIG_CACHE_TYPE: Redis
+      ESPOCRM_CONFIG_REDIS_HOST: redis
+      ESPOCRM_CONFIG_REDIS_PORT: 6379
+      
+    volumes:
+      - espocrm_data:/var/www/html
+      - ./custom:/var/www/html/custom
+      - ./data/upload:/var/www/html/data/upload
+      - ./data/logs:/var/www/html/data/logs
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - dokploy-network
+
+  # EspoCRM Daemon (for scheduled jobs)
+  espocrm-daemon:
+    # Usar mesma imagem customizada do app principal
+    image: espocrm-custom:latest
+    container_name: espocrm-v03-daemon
+    restart: unless-stopped
+    volumes:
+      - espocrm_data:/var/www/html
+      - ./custom:/var/www/html/custom
+      - ./data/upload:/var/www/html/data/upload
+      - ./data/logs:/var/www/html/data/logs
+    environment:
+      # Database Configuration
+      ESPOCRM_DATABASE_PLATFORM: Mysql
+      ESPOCRM_DATABASE_HOST: mariadb
+      ESPOCRM_DATABASE_PORT: 3306
+      ESPOCRM_DATABASE_NAME: ${DB_NAME:-espocrm}
+      ESPOCRM_DATABASE_USER: ${DB_USER:-espocrm}
+      ESPOCRM_DATABASE_PASSWORD: ${DB_PASSWORD:-espocrm_password}
+    # Comando direto para o daemon - só cron, sem Apache
+    command: ["sh", "-c", "sleep 30 && cron -f"]
+    depends_on:
+      espocrm:
+        condition: service_started
+    networks:
+      - dokploy-network
+
+  # Redis Service (for cache and sessions)
+  redis:
+    image: redis:7-alpine
+    container_name: espocrm-v03-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - dokploy-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # EspoCRM WebSocket (DESABILITADO - vendor/autoload.php não disponível)
+  # Para habilitar WebSocket:
+  # 1. Garantir que vendor/ está completo no build
+  # 2. Descomentar as linhas abaixo
+  # espocrm-websocket:
+  #   image: espocrm-custom:latest
+  #   container_name: espocrm-v03-websocket
+  #   restart: unless-stopped
+  #   environment:
+  #     ESPOCRM_DATABASE_PLATFORM: Mysql
+  #     ESPOCRM_DATABASE_HOST: mariadb
+  #     ESPOCRM_DATABASE_PORT: 3306
+  #     ESPOCRM_DATABASE_NAME: ${DB_NAME:-espocrm}
+  #     ESPOCRM_DATABASE_USER: ${DB_USER:-espocrm}
+  #     ESPOCRM_DATABASE_PASSWORD: ${DB_PASSWORD:-espocrm_password}
+  #     ESPOCRM_CONFIG_USE_WEB_SOCKET: "true"
+  #     ESPOCRM_CONFIG_WEB_SOCKET_URL: ${WEBSOCKET_URL:-ws://localhost:8081}
+  #   volumes:
+  #     - espocrm_data:/var/www/html
+  #     - ./custom:/var/www/html/custom
+  #   ports:
+  #     - "${WEBSOCKET_PORT:-8081}:8080"
+  #   command: ["php", "-f", "websocket.php"]
+  #   depends_on:
+  #     espocrm:
+  #       condition: service_started
+  #   networks:
+  #     - espocrm-network
+
+volumes:
+  mariadb_data:
+    driver: local
+  espocrm_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  dokploy-network:
+    external: true
