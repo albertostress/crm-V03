@@ -4,16 +4,17 @@ services:
     container_name: espocrm
     restart: always
     depends_on:
-      - espocrm-db
-      - espocrm-redis
+      espocrm-db:
+        condition: service_healthy
+      espocrm-redis:
+        condition: service_healthy
     environment:
-      - ESPOCRM_DATABASE_DRIVER=pdo_mysql
+      - ESPOCRM_DATABASE_PLATFORM=Mysql
       - ESPOCRM_DATABASE_HOST=espocrm-db
       - ESPOCRM_DATABASE_PORT=3306
       - ESPOCRM_DATABASE_NAME=${DB_NAME:-espocrm}
       - ESPOCRM_DATABASE_USER=${DB_USER:-espocrm}
       - ESPOCRM_DATABASE_PASSWORD=${DB_PASSWORD:-espocrm_password}
-      - ESPOCRM_REDIS_HOST=espocrm-redis
       - ESPOCRM_ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ESPOCRM_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
       - ESPOCRM_SITE_URL=${SITE_URL:-https://crm.kwameoilandgas.ao}
@@ -25,6 +26,12 @@ services:
       - ./data/logs:/var/www/html/data/logs
     networks:
       - dokploy-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/api/v1/App/user"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
 
   espocrm-daemon:
     image: espocrm/espocrm:latest
@@ -33,13 +40,12 @@ services:
     depends_on:
       - espocrm
     environment:
-      - ESPOCRM_DATABASE_DRIVER=pdo_mysql
+      - ESPOCRM_DATABASE_PLATFORM=Mysql
       - ESPOCRM_DATABASE_HOST=espocrm-db
       - ESPOCRM_DATABASE_PORT=3306
       - ESPOCRM_DATABASE_NAME=${DB_NAME:-espocrm}
       - ESPOCRM_DATABASE_USER=${DB_USER:-espocrm}
       - ESPOCRM_DATABASE_PASSWORD=${DB_PASSWORD:-espocrm_password}
-      - ESPOCRM_REDIS_HOST=espocrm-redis
     entrypoint: docker-daemon.sh
     volumes:
       - espocrm_data:/var/www/html
