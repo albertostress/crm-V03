@@ -106,8 +106,8 @@ RUN { \
     echo '</VirtualHost>'; \
     } > /etc/apache2/sites-available/000-default.conf
 
-# Add healthcheck
-HEALTHCHECK --interval=30s --timeout=3s --start-period=60s \
+# Add healthcheck - simplificado
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s \
     CMD curl -f http://localhost/ || exit 1
 
 # Expose port

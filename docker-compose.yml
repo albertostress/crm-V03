@@ -1,6 +1,9 @@
 services:
   espocrm:
-    image: espocrm/espocrm:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: espocrm-custom:latest
     container_name: espocrm
     restart: always
     depends_on:
@@ -18,6 +21,9 @@ services:
       - ESPOCRM_ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ESPOCRM_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
       - ESPOCRM_SITE_URL=${SITE_URL:-https://crm.kwameoilandgas.ao}
+      - ESPOCRM_CONFIG_USE_CACHE=true
+      - ESPOCRM_CONFIG_REDIS_HOST=espocrm-redis
+      - ESPOCRM_CONFIG_REDIS_PORT=6379
     volumes:
       - espocrm_data:/var/www/html
       - ./custom:/var/www/html/custom
@@ -27,14 +33,17 @@ services:
     networks:
       - dokploy-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/api/v1/App/user"]
+      test: ["CMD", "curl", "-f", "http://localhost/"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 90s
+      start_period: 120s
 
   espocrm-daemon:
-    image: espocrm/espocrm:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: espocrm-custom:latest
     container_name: espocrm-daemon
     restart: always
     depends_on:
@@ -46,7 +55,7 @@ services:
       - ESPOCRM_DATABASE_NAME=${DB_NAME:-espocrm}
       - ESPOCRM_DATABASE_USER=${DB_USER:-espocrm}
       - ESPOCRM_DATABASE_PASSWORD=${DB_PASSWORD:-espocrm_password}
-    entrypoint: docker-daemon.sh
+    command: ["sh", "-c", "sleep 30 && cron -f"]
     volumes:
       - espocrm_data:/var/www/html
       - ./custom:/var/www/html/custom
