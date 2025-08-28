@@ -24,6 +24,7 @@ services:
       - ESPOCRM_CONFIG_USE_CACHE=true
       - ESPOCRM_CONFIG_REDIS_HOST=espocrm-redis
       - ESPOCRM_CONFIG_REDIS_PORT=6379
+      - ESPOCRM_SKIP_AUTO_INSTALL=true
     volumes:
       - espocrm_data:/var/www/html
       - ./custom:/var/www/html/custom

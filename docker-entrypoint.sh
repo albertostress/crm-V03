@@ -28,6 +28,12 @@ wait_for_db() {
 initialize_espocrm() {
     echo "Initializing EspoCRM..."
     
+    # Skip auto install if requested (let web installer handle it)
+    if [ "${ESPOCRM_SKIP_AUTO_INSTALL}" = "true" ]; then
+        echo "Auto-install skipped. Use web installer at /install/"
+        return 0
+    fi
+    
     # Check if already initialized
     if [ -f /var/www/html/data/config.php ]; then
         echo "EspoCRM is already initialized."
