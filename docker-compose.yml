@@ -6,8 +6,6 @@ services:
     image: espocrm-custom:latest
     container_name: espocrm
     restart: always
-    ports:
-      - "3000:80"
     depends_on:
       espocrm-db:
         condition: service_healthy
