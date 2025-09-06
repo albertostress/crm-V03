@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: espocrm/espocrm:latest
+    image: espocrm-custom:latest
     container_name: espocrm
     restart: always
     depends_on:
